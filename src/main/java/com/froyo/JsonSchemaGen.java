@@ -7,12 +7,16 @@ import com.github.reinert.jjschema.SchemaGeneratorBuilder;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
 import org.reflections.Reflections;
 
 import java.util.Set;
 
 @Mojo(name = "generateschema")
 public class JsonSchemaGen extends AbstractMojo {
+
+    @Parameter( property = "package")
+    private String packageName;
 
     public JsonSchemaGen() {
 
@@ -23,7 +27,7 @@ public class JsonSchemaGen extends AbstractMojo {
         getLog().info("Execute JSON Schema Generator");
 
         // Find all annotated classes
-        Reflections reflections = new Reflections("com.froyo");
+        Reflections reflections = new Reflections(packageName);
         Set<Class<?>> annotatedClasses = reflections.getTypesAnnotatedWith(Attributes.class);
 
         for (Class c: annotatedClasses) {
