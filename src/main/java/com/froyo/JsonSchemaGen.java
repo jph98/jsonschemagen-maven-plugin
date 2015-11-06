@@ -12,7 +12,10 @@ import org.reflections.Reflections;
 
 import java.util.Set;
 
-@Mojo(name = "generateschema")
+/**
+ * https://maven.apache.org/guides/plugin/guide-java-plugin-development.html
+ */
+@Mojo(name = "jsonschemagen")
 public class JsonSchemaGen extends AbstractMojo {
 
     @Parameter( property = "package")
