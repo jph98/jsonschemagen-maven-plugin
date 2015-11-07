@@ -18,20 +18,18 @@ import java.util.Set;
 @Mojo(name = "jsonschemagen")
 public class JsonSchemaGen extends AbstractMojo {
 
-    @Parameter( property = "package")
-    private String packageName;
-
-    public JsonSchemaGen() {
-
-    }
+    @Parameter
+    private String packageNameToScan;
 
     public void execute() throws MojoExecutionException {
 
-        getLog().info("Execute JSON Schema Generator");
+        getLog().info("Execute JSON Schema Generator for package name: " + packageNameToScan);
 
         // Find all annotated classes
-        Reflections reflections = new Reflections(packageName);
+        Reflections reflections = new Reflections(packageNameToScan);
         Set<Class<?>> annotatedClasses = reflections.getTypesAnnotatedWith(Attributes.class);
+
+        getLog().info("Found " + annotatedClasses.size() + " classes with annotation " + Attributes.class.getCanonicalName());
 
         for (Class c: annotatedClasses) {
 
