@@ -10,7 +10,7 @@ To use this add the following to your project with the package name to scan:
         <version>1.0</version>
 
         <configuration>
-            <packageNameToScan>com.brightpearl</packageNameToScan>
+            <packageNameToScan>com.froyo</packageNameToScan>
             <skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>
         </configuration>
 
