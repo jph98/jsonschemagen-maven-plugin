@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -41,6 +42,9 @@ public class JsonSchemaGen extends AbstractMojo {
 
     @Parameter(defaultValue = "${project}", required = true, readonly = true)
     private MavenProject project;
+
+    @Parameter(defaultValue = "${project.compileSourceRoots}", required = true, readonly = true)
+    private List compileSourceRoots;
 
     /**
      * @parameter default-value="${descriptor}"
@@ -69,8 +73,8 @@ public class JsonSchemaGen extends AbstractMojo {
 
         JsonSchemaGenerator generator = SchemaGeneratorBuilder.draftV4Schema().build();
         for (Class c : classes) {
+            System.out.println("\tJJSchemaGen - processing: " + c.getName());
             ObjectNode node = generator.generateSchema(c);
-            System.out.println("\t Processing: " + c.getName());
 
             if (DEBUG) {
                 System.out.println(node);
@@ -103,11 +107,22 @@ public class JsonSchemaGen extends AbstractMojo {
 
     private void loadDependenciesIntoPluginClasspath() {
 
+        ClassRealm realm = descriptor.getClassRealm();
+
+        System.out.println("-- PROJECTS --");
+        List<MavenProject> projects = project.getCollectedProjects();
+        for (MavenProject p: projects) {
+            System.out.println("\tHandling " + p);
+            addFilestoRealm(p, realm);
+        }
+    }
+
+    private void addFilestoRealm(MavenProject p, ClassRealm realm) {
+
         try {
 
-            List<String> classElements = project.getCompileClasspathElements();
+            List<String> classElements = p.getCompileClasspathElements();
 
-            ClassRealm realm = descriptor.getClassRealm();
             for (String element : classElements) {
                 File elementFile = new File(element);
                 realm.addURL(elementFile.toURI().toURL());
