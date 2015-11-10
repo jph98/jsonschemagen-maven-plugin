@@ -1,4 +1,4 @@
-# maven-jsonschema-gen
+# jsonschemagen-maven-plugin
 
 Maven Plugin that generates JSON Schemas from Java objects using JJSchema.
 
