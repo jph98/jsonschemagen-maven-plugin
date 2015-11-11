@@ -1,10 +1,10 @@
 package com.froyo;
 
-import com.cedarsoftware.util.io.JsonWriter;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.github.reinert.jjschema.Attributes;
-import com.github.reinert.jjschema.JsonSchemaGenerator;
-import com.github.reinert.jjschema.SchemaGeneratorBuilder;
+
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.jsonschema.JsonSerializableSchema;
+import com.fasterxml.jackson.module.jsonSchema.factories.SchemaFactoryWrapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
@@ -22,7 +22,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -30,36 +29,42 @@ import java.util.Set;
  * See: http://stackoverflow.com/questions/2659048/add-maven-build-classpath-to-plugin-execution-classpath
  */
 @Mojo(name = "jsonschemagen")
+@SuppressWarnings("UnusedDeclaration")
 public class JsonSchemaGen extends AbstractMojo {
 
-    private static final boolean DEBUG = false;
-
     @Parameter
+    @SuppressWarnings("UnusedDeclaration")
     private String packageNameToScan;
 
     @Parameter
+    @SuppressWarnings("UnusedDeclaration")
     private String schemaOutputDirectory;
 
     @Parameter(defaultValue = "${project}", required = true, readonly = true)
+    @SuppressWarnings("UnusedDeclaration")
     private MavenProject project;
 
     @Parameter(defaultValue = "${project.compileSourceRoots}", required = true, readonly = true)
+    @SuppressWarnings("UnusedDeclaration")
     private List compileSourceRoots;
 
     /**
      * @parameter default-value="${descriptor}"
      */
     @Component
+    @SuppressWarnings("UnusedDeclaration")
     private PluginDescriptor descriptor;
 
+    /**
+     * Execute the mojo.
+     * @throws MojoExecutionException
+     */
     public void execute() throws MojoExecutionException {
-
-        displayModules();
 
         loadDependenciesIntoPluginClasspath();
 
-        System.out.println("-- CLASSES --");
-        System.out.println("Using package: " + packageNameToScan);
+        getLog().info("-- CLASSES --");
+        getLog().info("Using package: " + packageNameToScan);
         Set<Class<?>> classes = getClassesFromPackage(packageNameToScan);
 
         if (classes.size() == 0) {
@@ -69,27 +74,37 @@ public class JsonSchemaGen extends AbstractMojo {
         }
     }
 
+    /**
+     * Generate JSON schema for class set
+     * @param classes
+     */
     private void generateJsonSchemaForClassSet(Set<Class<?>> classes) {
 
-        JsonSchemaGenerator generator = SchemaGeneratorBuilder.draftV4Schema().build();
-        for (Class c : classes) {
-            System.out.println("\tJJSchemaGen - processing: " + c.getName());
-            ObjectNode node = generator.generateSchema(c);
+        getLog().info("\n Handling " + classes.size() + " classes \n");
 
-            if (DEBUG) {
-                System.out.println(node);
-            }
+        ObjectMapper m = new ObjectMapper();
+        SchemaFactoryWrapper visitor = new SchemaFactoryWrapper();
+
+        for (Class c : classes) {
 
             try {
-                writeFileToOutput(c, node);
+
+                m.acceptJsonFormatVisitor(m.constructType(c), visitor);
+                com.fasterxml.jackson.module.jsonSchema.JsonSchema jsonSchema = visitor.finalSchema();
+
+                String output = m.writerWithDefaultPrettyPrinter().writeValueAsString(jsonSchema);
+                writeFileToOutput(c, output);
+
+            } catch (JsonMappingException e) {
+                getLog().error("JSONMappingException: exception " + e);
             } catch (IOException e) {
-                System.err.println("Could not write json schema for " + c.getName() + e);
+                getLog().error("IOException: Could not write json schema for " + c.getName() + e);
             }
 
         }
     }
 
-    private void writeFileToOutput(Class c, ObjectNode node) throws IOException {
+    private void writeFileToOutput(Class c, String json) throws IOException {
 
         File outputDirectory = new File(project.getBasedir() + File.separator + schemaOutputDirectory);
         if (!outputDirectory.exists()) {
@@ -99,25 +114,24 @@ public class JsonSchemaGen extends AbstractMojo {
         String outputFileName = c.getSimpleName() + ".json";
         File outputFile = new File(outputDirectory + File.separator, outputFileName);
 
-        String formattedJson = JsonWriter.formatJson(node.toString());
-        Files.write(formattedJson, outputFile, Charsets.UTF_8);
+        Files.write(json, outputFile, Charsets.UTF_8);
 
-        System.out.println("Wrote: " + outputFile.getAbsolutePath());
+        getLog().info("Wrote: " + outputFile.getAbsolutePath());
     }
 
     private void loadDependenciesIntoPluginClasspath() {
 
         ClassRealm realm = descriptor.getClassRealm();
 
-        System.out.println("-- PROJECTS --");
+        getLog().info("-- PROJECTS --");
         List<MavenProject> projects = project.getCollectedProjects();
         for (MavenProject p: projects) {
-            System.out.println("\tHandling " + p);
-            addFilestoRealm(p, realm);
+            getLog().info("\tHandling " + p);
+            addFilesToRealm(p, realm);
         }
     }
 
-    private void addFilestoRealm(MavenProject p, ClassRealm realm) {
+    private void addFilesToRealm(MavenProject p, ClassRealm realm) {
 
         try {
 
@@ -129,12 +143,13 @@ public class JsonSchemaGen extends AbstractMojo {
                 System.out.println("Added " + elementFile.toURI().toURL().toString());
             }
         } catch (DependencyResolutionRequiredException e) {
-            System.out.println("Could not resolve dependency " + e);
+            getLog().info("DependencyResolutionRequiredException: Could not add file " + e);
         } catch (MalformedURLException e) {
-            System.out.println("MalformedURLException " + e);
+            getLog().info("MalformedURLException: Could not add file " + e);
         }
     }
 
+    @SuppressWarnings("unused")
     private void displayModules() {
 
         System.out.println("-- MODULES --");
@@ -147,7 +162,7 @@ public class JsonSchemaGen extends AbstractMojo {
     public static Set<Class<?>> getClassesFromPackage(String packageName) {
 
         Reflections ref = new Reflections(packageName);
-        return ref.getTypesAnnotatedWith(Attributes.class);
+        return ref.getTypesAnnotatedWith(JsonSerializableSchema.class);
     }
 
 }
