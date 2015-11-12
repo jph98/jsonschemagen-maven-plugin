@@ -1,6 +1,5 @@
 package com.froyo;
 
-
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsonschema.JsonSerializableSchema;
@@ -111,7 +110,7 @@ public class JsonSchemaGen extends AbstractMojo {
             outputDirectory.mkdir();
         }
 
-        String outputFileName = c.getSimpleName() + ".json";
+        String outputFileName = c.getPackage() + "." + c.getSimpleName() + ".json";
         File outputFile = new File(outputDirectory + File.separator, outputFileName);
 
         Files.write(json, outputFile, Charsets.UTF_8);
